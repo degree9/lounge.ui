@@ -1,61 +1,73 @@
 (ns lounge.ui
   (:refer-hoplon :exclude [header main])
-  (:require [lounge.state   :as state]
-            [lounge.drawer  :as drawer]
-            [lounge.toolbar :as toolbar]
-            [silicone.paper :as paper]
-            [silicone.neon :as neon]
+  (:require [lounge.setup       :as setup]
+            [lounge.state       :as state]
+            [lounge.ui.drawer   :as drawer]
+            [lounge.ui.toolbar  :as toolbar]
+            [lounge.pages       :as pages]
+            [lounge.org         :as org]
+            [lounge.infra       :as infra]
+            [lounge.report      :as report]
+            [lounge.vault       :as vault]
+            [lounge.ui.view     :as view]
+            [silicone.iron      :as iron]
+            [silicone.paper     :as paper]
+            [silicone.neon      :as neon]
             [goog.dom]))
 
 (def index-head
   [(title "Degree9")
+   (iron/import-elements)
    (paper/import-elements)
    (neon/import-elements)])
 
 (def drawer-panel-attr
   {:id "drawer-layout"
    :force-narrow ""
-   :right-drawer (cell= (:auth state/user))})
+   :right-drawer (cell= (not vault/token?))})
 
-(def content-pages-attr
-  {:id "content-pages"
-   :entry-animation "slide-from-right-animation"
-   :exit-animation "slide-left-animation"
-   :attr-for-selected "route"
-   :selected (cell= (:hash state/routing))})
+(def header-panel-attr
+  {:main "" :mode "waterfall" :class [:fit]})
 
-(def content-pages
-  (neon/neon-animated-pages
-   content-pages-attr
-   (div :route "#!/home" (a :href "#!/nothome" "nothome!"))
-   (div :route "#!/nothome" (a :href "#!/home" "home!"))))
+(def index-content
+  (view/animated-view-container
+   {:id "content-pages"
+    :selected (cell= (cond (not (:initialized vault/status)) "#!/_setup"
+                           (and (:initialized vault/status)
+                                (:sealed      vault/status)) "#!/_vault"
+                           :else (:hash state/routing)))}
+   [setup/view
+    pages/home
+    org/workflow
+    infra/workflow
+    report/workflow]))
 
 (def index-body
   (paper/paper-drawer-panel
    drawer-panel-attr
    drawer/drawer
    (paper/paper-header-panel
-    {:main "" :mode "waterfall"}
-    (toolbar/toolbar :class {:paper-header true})
-    content-pages)))
+    header-panel-attr
+    toolbar/toolbar
+    index-content
+    )))
 
 (def index
   (html {:lang "en"}
    (head
     index-head)
-   (body {:unresolved ""}
+   (body {:unresolved "" :class [:fullbleed]}
     index-body)))
-
-(def activate-content #(cell= (.setAttribute (goog.dom.getElement "content-pages") "selected" (:hash state/routing))))
 
 (defn reset-layout! []
   ;;expand this to actually check if the drawer is open
   (-> js/document (.getElementById "drawer-layout") .closeDrawer))
 
-(cell= (when (:auth state/user)
+(cell= (when vault/token?
         (reset-layout!)))
 
 (defn init []
-  (index)
-  (activate-content))
+  index
+  (vault/status?)
+  (vault/auth?))
 

@@ -1,0 +1,16 @@
+(ns lounge.ui.form
+  (:require [lounge.vault          :as vault]
+            [silicone.iron         :as iron]
+            [silicone.paper        :as paper]))
+
+(def authform
+  (let [username (cell nil)
+        password (cell nil)]
+    (form {:is "iron-form" :toggle (cell= (not vault/token?))}
+     (paper/paper-input :label "Username" :value username :change #(reset! username @%))
+     (paper/paper-input :label "Password" :type "password" :value password :change #(reset! password @%))
+     (paper/paper-button {:click #(let []
+                                    (vault/auth! @username @password)
+                                    (reset! username "")
+                                    (reset! password ""))
+                          :raised ""} (iron/iron-icon :icon "account-circle")))))
