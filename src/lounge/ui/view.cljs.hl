@@ -1,0 +1,25 @@
+(ns lounge.ui.view
+  (:require [lounge.vault  :as vault]
+            [lounge.state  :as state]
+            [silicone.iron :as iron]
+            [silicone.neon :as neon]
+            [goog.dom]))
+
+(def view-container-attr
+  {:attr-for-selected "name"
+   :class [:fit]})
+
+(def animated-view-container-attr
+  (merge view-container-attr
+         {:entry-animation "slide-from-right-animation"
+          :exit-animation "slide-left-animation"}))
+
+(defelem view-container [attr & kids]
+  (iron/iron-pages (merge view-container-attr attr) kids))
+
+(defelem animated-view-container [attr & kids]
+  (neon/neon-animated-pages (merge animated-view-container-attr attr) kids))
+
+(defelem view [attr & kids]
+  (div (merge {:style "padding:0 16px;margin-left: auto;margin-right:auto;"
+               :class [:horizontal :layout :wrap :center-justified]} attr) kids))

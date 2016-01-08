@@ -1,0 +1,67 @@
+(ns lounge.ui.card
+  (:require [silicone.iron  :as iron]
+            [silicone.paper :as paper]
+            [silicone.neon  :as neon]))
+
+(defn deep-merge* [& maps]
+  (let [f (fn [old new]
+             (if (and (map? old) (map? new))
+                 (merge-with deep-merge* old new)
+                 new))]
+    (if (every? map? maps)
+      (apply merge-with f maps)
+     (last maps))))
+
+(defn attr-deep-merge [& maps]
+  (let [maps (filter identity maps)]
+    (assert (every? map? maps))
+   (apply merge-with deep-merge* maps)))
+
+(defelem card [attr & kids]
+  (let [attr (merge {:class [:self-center] :style "max-height: 640px;max-width: 640px;margin: 16px;"} attr)]
+    (paper/paper-card attr kids)))
+
+(defn wizpg-dec [pgnum]
+  (if (< 0 pgnum) (dec pgnum) pgnum))
+
+(defn wizpg-inc [maxpg pgnum]
+  (if (< pgnum maxpg) (inc pgnum) pgnum))
+
+(defelem wiz-infobtn [attr & kids]
+  (paper/paper-icon-button (merge {:class [:self-center] :icon "icons:info-outline"} attr) (div {:toggle (:toggle-label attr)} kids)))
+
+(defelem wiz-prevbtn [attr & kids]
+  (paper/paper-button attr [(iron/iron-icon :icon (or (:icon attr) "hardware:keyboard-arrow-left")) (or kids (:label attr))]))
+
+(defelem wiz-nextbtn [attr & kids]
+  (paper/paper-button attr [(or kids (:label attr)) (iron/iron-icon :icon (or (:icon attr) "hardware:keyboard-arrow-right"))]))
+
+(defelem wiz-submitbtn [attr & kids]
+  (paper/paper-button attr [(or kids (:label attr)) (iron/iron-icon :icon "icons:check")]))
+
+(defelem wizard [attr & [kids]]
+  (let [{:keys [infobtn prevbtn nextbtn submitbtn]} (:buttons attr)
+        page (or (:page attr) (cell 0))
+        attr (dissoc attr :buttons)]
+    (card attr
+          [(div {:class [:card-content :layout :vertical]}
+                (iron/iron-pages {:class [:fill] :selected (cell= page) :attr-for-selected (:attr-for-selected attr)} kids))
+           (div {:class [:card-actions :layout :horizontal]}
+                (wiz-infobtn (merge {:toggle false} infobtn))
+                (div :class [:flex])
+                (wiz-prevbtn   (merge {:toggle (cell= (not= 0 page))
+                                       :click #(swap! page wizpg-dec)} prevbtn))
+                (wiz-nextbtn   (merge {:toggle (cell= (not= page (-> kids count dec)))
+                                       :click #(swap! page (partial wizpg-inc (-> kids count dec)))} nextbtn))
+                (wiz-submitbtn (merge {:toggle (cell= (= page (-> kids count dec)))} submitbtn)))])))
+
+(defelem page-wizard [attr & kids]
+  (let [page (or (:page attr) (cell "welcome"))
+        prevbtn   {:toggle (cell= (not= page "welcome"))
+                   :click  #(reset! page (or (:prev ((keyword @page) (:pages attr))) @page))}
+        nextbtn   {:toggle (cell= (not= page "summary"))
+                   :click  #(reset! page (or (:next ((keyword @page) (:pages attr))) @page))}
+        submitbtn {:toggle (cell= (= page "summary"))}]
+    (wizard (attr-deep-merge {:buttons {:prevbtn prevbtn :nextbtn nextbtn :submitbtn submitbtn}
+                         :attr-for-selected "page"
+                         :page page} attr) kids)))

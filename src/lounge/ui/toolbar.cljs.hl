@@ -1,0 +1,22 @@
+(ns lounge.ui.toolbar
+  (:require [lounge.ui.drawer :as drawer]
+            [lounge.vault   :as vault]
+            [silicone.paper :as paper]))
+
+(defn auth-toolbar []
+  (paper/paper-icon-button :icon "lock-open" :toggle vault/token? :click #(vault/unauth!)
+                           ))
+
+(defn unauth-toolbar []
+  (drawer/drawer-toggle :icon "lock-outline" :toggle (cell= (not vault/token?))))
+
+(def drawer-toolbar
+  (drawer/drawer-toggle :toggle vault/token?))
+
+(def toolbar
+  (paper/paper-toolbar
+   (drawer-toolbar)
+   (div :class {:flex true})
+   (auth-toolbar)
+   (unauth-toolbar)))
+
